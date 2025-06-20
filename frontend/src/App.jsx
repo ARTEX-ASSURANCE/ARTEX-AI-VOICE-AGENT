@@ -48,7 +48,7 @@ const App = () => {
 
             if (!response.ok) {
                 const err = await response.json();
-                throw new Error(err.detail || "Erreur lors de la récupération du token depuis le serveur.");
+                throw new Error(err.error || "Erreur lors de la récupération du token depuis le serveur.");
             }
 
             const data = await response.json();
