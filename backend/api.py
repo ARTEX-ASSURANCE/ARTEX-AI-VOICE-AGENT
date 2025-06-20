@@ -6,6 +6,18 @@ from datetime import date
 
 # Assumes the driver script is named 'extranet_driver.py'
 from db_driver import ExtranetDatabaseDriver, Adherent, Contrat, SinistreArtex
+from dotenv import load_dotenv
+from fastapi import FastAPI, HTTPException
+from fastapi.middleware.cors import CORSMiddleware # Import CORS Middleware
+from livekit.api import AccessToken, VideoGrants
+import os
+
+load_dotenv()
+
+# --- Load LiveKit Configuration from .env file ---
+LIVEKIT_HOST = os.getenv("LIVEKIT_HOST")
+LIVEKIT_API_KEY = os.getenv("LIVEKIT_API_KEY")
+LIVEKIT_API_SECRET = os.getenv("LIVEKIT_API_SECRET")
 
 # --- Setup ---
 logger = logging.getLogger("extranet-assistant")
@@ -162,3 +174,49 @@ class ExtranetAssistant(llm.FunctionContext):
         logger.info("Recherche de l'adhérent par nom complet : %s %s", prenom, nom)
         adherents = self.db_driver.get_adherent_by_fullname(nom, prenom)
         return self._handle_lookup_result(adherents)
+
+# --- FastAPI App Initialization ---
+app = FastAPI()
+
+# --- Add CORS Middleware ---
+# This is the new block that fixes the "Failed to fetch" error.
+# It allows your frontend (running on http://localhost:5173) to communicate with this backend.
+origins = [
+    "http://localhost:5173",
+    "http://127.0.0.1:5173",
+]
+
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=origins,
+    allow_credentials=True,
+    allow_methods=["*"], # Allows all methods (GET, POST, etc.)
+    allow_headers=["*"], # Allows all headers
+)
+# --- End of CORS Middleware Block ---
+
+
+@app.get("/")
+async def root():
+    return {"message": "ARTEX AI Voice Agent Backend is running."}
+
+@app.post("/create-token")
+async def create_token(body: dict):
+    identity = body.get("identity")
+    room_name = body.get("room_name")
+
+    if not identity or not room_name:
+        raise HTTPException(status_code=400, detail="identity and room_name are required")
+
+    # Create a LiveKit access token
+    token = AccessToken(LIVEKIT_API_KEY, LIVEKIT_API_SECRET)
+    grant = VideoGrants(
+        room_join=True,
+        room=room_name,
+        can_publish=True,
+        can_subscribe=True,
+    )
+    token.add_grant(grant).with_identity(identity).with_name(identity)
+
+    # Return the token as a JSON response
+    return {"token": token.to_jwt()}
