@@ -37,7 +37,7 @@ async def get_rooms():
 
 @app.route("/create-token", methods=['POST'])
 async def get_token():
-    data = await request.get_json()
+    data = request.get_json()
     room_name = data.get("room_name")
     identity = data.get("identity", "default-identity")
 
