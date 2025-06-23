@@ -117,25 +117,6 @@ class ExtranetDatabaseDriver:
         cols = [desc[0] for desc in cursor.description]
         return dataclass_type(**dict(zip(cols, row)))
 
-    def __init__(self, host: str, user: str, password: str, database: str):
-        """Initializes the driver with MySQL connection details."""
-        self.connection_params = {'host': host, 'user': user, 'password': password, 'database': database}
-
-    @contextmanager
-    def _get_connection(self):
-        """Provides a managed connection to the MySQL database."""
-        conn = mysql.connector.connect(**self.connection_params)
-        try:
-            yield conn
-        finally:
-            if conn and conn.is_connected():
-                conn.close()
-
-    def _map_row(self, row: tuple, cursor, dataclass_type):
-        if not row: return None
-        cols = [desc[0] for desc in cursor.description]
-        return dataclass_type(**dict(zip(cols, row)))
-
     # --- Adherent Operations ---
     def get_adherent_by_id(self, adherent_id: int) -> Optional[Adherent]:
         # ... (inchangé)

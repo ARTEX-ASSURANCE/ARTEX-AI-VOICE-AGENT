@@ -8,7 +8,7 @@ from livekit.agents import (
     cli,
     llm
 )
-from livekit.agents.multimodal import MultimodalAgent
+#from livekit.agents.multimodal import MultimodalAgent
 from livekit.plugins import openai
 from dotenv import load_dotenv
 from api import ExtranetAssistant
@@ -106,7 +106,7 @@ async def entrypoint(ctx: JobContext):
         else:
             find_adherent_profile(msg)
             
-    def find_adherent_profile(msg: ll.ChatMessage):
+    def find_adherent_profile(msg: llm.ChatMessage):
         """
         Appelée lorsqu'aucun adhérent n'est dans le contexte.
         Guide le LLM pour qu'il pose des questions afin d'identifier l'utilisateur.
