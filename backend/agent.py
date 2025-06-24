@@ -1,162 +1,85 @@
+# agent.py
+
 from __future__ import annotations
-import json
+import logging
 import asyncio
+import json
+from dotenv import load_dotenv
 from livekit.agents import (
-    AutoSubscribe,
     JobContext,
     WorkerOptions,
     cli,
-    llm
+    AgentSession,
 )
-#from livekit.agents.multimodal import MultimodalAgent
-from livekit.plugins import openai
-from dotenv import load_dotenv
-from api import ExtranetAssistant
-from prompts import WELCOME_MESSAGE, INSTRUCTIONS, LOOKUP_ADHERENT_MESSAGE
-import os
-import logging
+from api import ArtexAgent
+from db_driver import ExtranetDatabaseDriver
+from prompts import WELCOME_MESSAGE
+from tools import lookup_adherent_by_telephone
 
-# --- Configuration du logger ---
+# --- Standard Logging Setup ---
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(name)s - %(levelname)s - %(message)s')
-logger = logging.getLogger("artex_agent")
+logger = logging.getLogger("artex_agent.main")
 
+# --- Load Environment Variables ---
 load_dotenv()
 
-# --- Entrypoint de l'agent ---
+# --- Initialize heavy objects ONCE when the worker starts ---
+# This is the optimized approach to reduce latency for each new call.
+try:
+    db_driver = ExtranetDatabaseDriver()
+    artex_agent = ArtexAgent(db_driver=db_driver)
+except Exception as e:
+    logger.error(f"Failed to initialize agent components on startup: {e}")
+    exit(1)
+
+
+# --- Main Agent Entrypoint ---
 async def entrypoint(ctx: JobContext):
     """
-    Point d'entrée principal pour le worker de l'agent.
-    Cette fonction est appelée chaque fois qu'un nouveau job (par exemple, une nouvelle connexion à une room) est démarré.
+    Main entry point for the agent worker. This function is called for each new job.
     """
-    await ctx.connect(auto_subscribe=AutoSubscribe.SUBSCRIBE_ALL)
-    logger.info("Agent connecté à la room LiveKit.")
+    logger.info(f"Received job: {ctx.job.id} for room: {ctx.room.name}")
     
-    room = ctx.room
+    # --- FIX for TypeError ---
+    # AgentSession is now initialized with no arguments.
+    session = AgentSession()
+    session.userdata = artex_agent.get_initial_userdata()
 
-    # --- Initialisation de l'assistant et du modèle ---
-    assistant_fnc = ExtranetAssistant()
-    model = openai.realtime.RealtimeModel(
-        instructions=INSTRUCTIONS,
-        voice="shimmer",
-        temperature=0.8,
-        modalities=["audio", "text"]
-    )
-    assistant = MultimodalAgent(model=model, fnc_ctx=assistant_fnc)
-    
-    logger.info("En attente d'un participant...")
-    participant = await ctx.wait_for_participant()
-    logger.info(f"Participant '{participant.identity}' rejoint la room.")
-
-    # Envoyer un événement KPI pour le début de l'appel
-    kpi_payload = {
-        "type": "kpi_update",
-        "data": { "kpi": "call_started", "value": 1 }
-    }
-    await room.send_data(json.dumps(kpi_payload))
-
-    # Démarrer l'agent pour ce participant
-    assistant.start(room)
-    session = model.sessions[0]
+    # --- Automatic Caller ID Lookup ---
     initial_message = WELCOME_MESSAGE
-    
-    # --- Logique d'identification automatique de l'appelant ---
     try:
-        caller_phone_number = participant.identity
-        logger.info(f"Tentative d'identification avec l'identité : {caller_phone_number}")
-        
-        # On tente de trouver l'adhérent avec ce numéro
-        # Note : La fonction `lookup_adherent_by_telephone` est une fonction "tool" pour le LLM.
-        # Ici, nous l'appelons directement pour une vérification initiale.
-        assistant_fnc.lookup_adherent_by_telephone(caller_phone_number)
-
-        if assistant_fnc.has_adherent_in_context():
-            adherent = assistant_fnc._adherent_context
-            initial_message = (f"Bonjour, vous êtes en communication avec ARIA, votre assistante chez ARTEX ASSURANCES. "
-                               f"J'ai identifié un dossier au nom de {adherent.prenom} {adherent.nom} associé à ce numéro. "
-                               "Est-ce bien vous ?")
-            logger.info(f"Adhérent trouvé : {adherent.prenom} {adherent.nom}. Message d'accueil personnalisé.")
+        metadata_str = ctx.room.metadata
+        if metadata_str:
+            metadata = json.loads(metadata_str)
+            caller_number = metadata.get('caller_number')
         else:
-            logger.info(f"Aucun adhérent trouvé pour l'identité {caller_phone_number}.")
+            caller_number = None
 
+        if caller_number:
+            logger.info(f"Found caller_number in metadata: {caller_number}")
+            lookup_result = await lookup_adherent_by_telephone(session, telephone=caller_number)
+            
+            if "Bonjour, je m'adresse bien à" in lookup_result:
+                initial_message = lookup_result
+            else:
+                 logger.warning(f"Phone number lookup for {caller_number} did not find a unique match.")
+        else:
+            logger.warning("No 'caller_number' in room metadata. Falling back to manual identification.")
+    except json.JSONDecodeError:
+        logger.error("Room metadata is not valid JSON. Falling back to manual identification.")
     except Exception as e:
-        logger.error(f"Erreur lors de l'identification automatique : {e}")
-    
-    # Envoi du message d'accueil (standard ou personnalisé) à la conversation LLM
-    session.conversation.item.create(
-        llm.ChatMessage(
-            role="assistant",
-            content=initial_message
-        )
-    )
-    session.response.create()
-    
-    # --- Gestionnaires d'événements de la session ---
-    
-    @session.on("user_speech_committed")
-    def on_user_speech_committed(msg: llm.ChatMessage):
-        """
-        Déclenché lorsque l'utilisateur a fini de parler et que la transcription est prête.
-        """
-        logger.info(f"Message de l'utilisateur reçu : {msg.content}")
-        if isinstance(msg.content, list):
-            msg.content = "\n".join("[image]" if isinstance(x, llm.ChatImage) else x for x in msg.content)
-            
-        if assistant_fnc.has_adherent_in_context():
-            handle_query(msg)
-        else:
-            find_adherent_profile(msg)
-            
-    def find_adherent_profile(msg: llm.ChatMessage):
-        """
-        Appelée lorsqu'aucun adhérent n'est dans le contexte.
-        Guide le LLM pour qu'il pose des questions afin d'identifier l'utilisateur.
-        """
-        logger.info("Aucun adhérent en contexte. Guidage du LLM pour l'identification.")
-        system_prompt = LOOKUP_ADHERENT_MESSAGE(msg)
+        logger.error(f"An error occurred during initial lookup: {e}")
 
-        # Envoi des données de raisonnement au frontend
-        reasoning_payload = {
-            "type": "agent_reasoning",
-            "data": {
-                "prompt": system_prompt,
-                "search_results": "L'agent demande des informations pour identifier l'adhérent."
-            }
-        }
-        asyncio.create_task(room.send_data(json.dumps(reasoning_payload)))
-
-        session.conversation.item.create(
-            llm.ChatMessage(
-                role="system",
-                content=system_prompt
-            )
-        )
-        session.response.create()
-        
-    def handle_query(msg: llm.ChatMessage):
-        """
-        Appelée lorsqu'un adhérent est identifié.
-        Traite les demandes de l'utilisateur.
-        """
-        logger.info(f"Adhérent en contexte. Traitement de la requête : {msg.content}")
-
-        # Envoi des données de raisonnement au frontend
-        # Dans ce cas, le "prompt" est simplement la retranscription de la requête de l'utilisateur.
-        reasoning_payload = {
-            "type": "agent_reasoning",
-            "data": {
-                "prompt": msg.content,
-                "search_results": "L'agent traite la requête de l'utilisateur identifié."
-            }
-        }
-        asyncio.create_task(room.send_data(json.dumps(reasoning_payload)))
-
-        session.conversation.item.create(
-            llm.ChatMessage(
-                role="user",
-                content=msg.content
-            )
-        )
-        session.response.create()
+    # --- FIX for TypeError ---
+    # The agent and the room context are now both passed to the start() method.
+    await session.start(artex_agent, room=ctx.room)
+    logger.info("Agent session started.")
     
+    await asyncio.sleep(0.5)
+    await session.say(initial_message, allow_interruptions=True)
+    logger.info("Spoke initial message.")
+
+
+# --- Standard CLI Runner ---
 if __name__ == "__main__":
     cli.run_app(WorkerOptions(entrypoint_fnc=entrypoint))
