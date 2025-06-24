@@ -6,26 +6,26 @@ import './App.css';
 // Génère une identité unique pour chaque session utilisateur
 const identity = 'user-' + Math.random().toString(36).substring(7);
 // Nom de la room LiveKit, peut être statique ou dynamique
-const roomName = 'artex-call';
+const roomName = 'artex-call'; // Ceci est un nom de salle, pas à traduire
 
 const App = () => {
     const [token, setToken] = useState(null);
     const [isConnecting, setIsConnecting] = useState(false);
     const [error, setError] = useState(null);
 
-    // State pour le panneau d'informations
+    // État pour le panneau d'informations
     const [insights, setInsights] = useState({ kpis: {}, reasoning: {} });
     const [duration, setDuration] = useState(0);
 
     // Effet pour le minuteur de la durée de l'appel
     useEffect(() => {
-        if (!token) return; // Ne démarre pas le minuteur sans token
+        if (!token) return; // Ne pas démarrer le minuteur sans token
 
         const timer = setInterval(() => {
             setDuration((prevDuration) => prevDuration + 1);
         }, 1000);
 
-        // Nettoyage du minuteur lorsque le composant est démonté ou le token change
+        // Nettoyage du minuteur lorsque le composant est démonté ou que le token change
         return () => clearInterval(timer);
     }, [token]);
 
@@ -37,6 +37,7 @@ const App = () => {
             // Utilise les variables d'environnement de Vite pour l'URL du backend
             const backendUrl = import.meta.env.VITE_BACKEND_URL;
             if (!backendUrl) {
+                // Ce message d'erreur est pour les développeurs, le garder en français est acceptable ici car le reste du code l'est.
                 throw new Error("VITE_BACKEND_URL n'est pas configuré. Veuillez créer un fichier .env à la racine du dossier 'frontend' et y ajouter cette variable.");
             }
 
@@ -48,6 +49,7 @@ const App = () => {
 
             if (!response.ok) {
                 const err = await response.json();
+                // Message d'erreur pour l'utilisateur, déjà en français.
                 throw new Error(err.error || "Erreur lors de la récupération du token depuis le serveur.");
             }
 
@@ -55,18 +57,19 @@ const App = () => {
             setToken(data.token);
 
         } catch (e) {
-            console.error(e);
-            setError(e.message);
+            console.error(e); // Log pour développeur
+            setError(e.message); // Le message d'erreur est déjà en français ou défini à partir d'une source française
         } finally {
             setIsConnecting(false);
         }
     };
     
-    // Callback pour gérer les données reçues du data channel de LiveKit
+    // Callback pour gérer les données reçues du canal de données LiveKit
     const onDataReceived = useCallback((data) => {
         try {
             const message = JSON.parse(data);
-            console.log("Données reçues de l'agent:", message);
+            // Log pour développeur
+            console.log("Données reçues de l'agent:", message); // "Données reçues de l'agent:"
 
             if (message.type === 'kpi_update') {
                 setInsights(prev => ({
@@ -80,11 +83,12 @@ const App = () => {
                 }));
             }
         } catch (e) {
-            console.error("Erreur lors du parsing des données de l'agent:", e);
+            // Log pour développeur
+            console.error("Erreur lors du parsing des données de l'agent:", e); // "Erreur lors du traitement des données de l'agent:"
         }
     }, []);
 
-    // --- Rendu conditionnel ---
+    // --- Rendu Conditionnel ---
     
     // Si nous n'avons pas de token, afficher l'écran de connexion
     if (!token) {

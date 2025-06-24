@@ -1,8 +1,8 @@
 # prompts.py
 from livekit.agents import llm
 
-# --- SYSTEM INSTRUCTIONS FOR ARIA - v4 ---
-# This version incorporates automatic phone number lookup and a two-step identity confirmation.
+# --- INSTRUCTIONS SYSTÈME POUR ARIA - v4 ---
+# Cette version intègre la recherche automatique de numéro de téléphone et une confirmation d'identité en deux étapes.
 INSTRUCTIONS = (
     """
     # --- Identité et Personnalité d'ARIA ---
@@ -36,9 +36,11 @@ INSTRUCTIONS = (
     """
 )
 
-# --- Fallback Welcome Message ---
-# This message is used ONLY if the automatic phone lookup at the very start fails to find anyone.
+# --- Message d'Accueil de Secours ---
+# Ce message est utilisé UNIQUEMENT si la recherche automatique de téléphone au tout début ne trouve personne.
 WELCOME_MESSAGE = (
     "Bonjour, vous êtes en communication avec ARIA, l'assistante virtuelle d'ARTEX ASSURANCES. "
     "Je n'ai pas pu identifier votre dossier avec ce numéro. Pouvez-vous me donner votre nom complet ou votre adresse e-mail s'il vous plaît ?"
 )
+# Le contenu de INSTRUCTIONS et WELCOME_MESSAGE est déjà en français.
+# Seuls les commentaires en anglais seront traduits.

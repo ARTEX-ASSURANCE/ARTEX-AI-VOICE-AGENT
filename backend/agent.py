@@ -16,36 +16,36 @@ from db_driver import ExtranetDatabaseDriver
 from prompts import WELCOME_MESSAGE
 from tools import lookup_adherent_by_telephone
 
-# --- Standard Logging Setup ---
+# --- Configuration Standard du Logging ---
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(name)s - %(levelname)s - %(message)s')
 logger = logging.getLogger("artex_agent.main")
 
-# --- Load Environment Variables ---
+# --- Chargement des Variables d'Environnement ---
 load_dotenv()
 
-# --- Initialize heavy objects ONCE when the worker starts ---
-# This is the optimized approach to reduce latency for each new call.
+# --- Initialisation des objets lourds UNE SEULE FOIS au démarrage du worker ---
+# Ceci est l'approche optimisée pour réduire la latence pour chaque nouvel appel.
 try:
     db_driver = ExtranetDatabaseDriver()
     artex_agent = ArtexAgent(db_driver=db_driver)
 except Exception as e:
-    logger.error(f"Failed to initialize agent components on startup: {e}")
+    logger.error(f"Échec de l'initialisation des composants de l'agent au démarrage : {e}")
     exit(1)
 
 
-# --- Main Agent Entrypoint ---
+# --- Point d'Entrée Principal de l'Agent ---
 async def entrypoint(ctx: JobContext):
     """
-    Main entry point for the agent worker. This function is called for each new job.
+    Point d'entrée principal pour le worker de l'agent. Cette fonction est appelée pour chaque nouvelle tâche.
     """
-    logger.info(f"Received job: {ctx.job.id} for room: {ctx.room.name}")
+    logger.info(f"Tâche reçue : {ctx.job.id} pour la salle : {ctx.room.name}")
     
-    # --- FIX for TypeError ---
-    # AgentSession is now initialized with no arguments.
+    # --- CORRECTIF pour TypeError ---
+    # AgentSession est maintenant initialisé sans arguments.
     session = AgentSession()
     session.userdata = artex_agent.get_initial_userdata()
 
-    # --- Automatic Caller ID Lookup ---
+    # --- Recherche Automatique de l'Identifiant de l'Appelant ---
     initial_message = WELCOME_MESSAGE
     try:
         metadata_str = ctx.room.metadata
@@ -56,30 +56,30 @@ async def entrypoint(ctx: JobContext):
             caller_number = None
 
         if caller_number:
-            logger.info(f"Found caller_number in metadata: {caller_number}")
+            logger.info(f"Numéro de l'appelant trouvé dans les métadonnées : {caller_number}")
             lookup_result = await lookup_adherent_by_telephone(session, telephone=caller_number)
             
-            if "Bonjour, je m'adresse bien à" in lookup_result:
+            if "Bonjour, je m'adresse bien à" in lookup_result: # Note: This string is already in French from another file.
                 initial_message = lookup_result
             else:
-                 logger.warning(f"Phone number lookup for {caller_number} did not find a unique match.")
+                 logger.warning(f"La recherche du numéro de téléphone {caller_number} n'a pas trouvé de correspondance unique.")
         else:
-            logger.warning("No 'caller_number' in room metadata. Falling back to manual identification.")
+            logger.warning("Aucun 'caller_number' dans les métadonnées de la salle. Retour à l'identification manuelle.")
     except json.JSONDecodeError:
-        logger.error("Room metadata is not valid JSON. Falling back to manual identification.")
+        logger.error("Les métadonnées de la salle ne sont pas un JSON valide. Retour à l'identification manuelle.")
     except Exception as e:
-        logger.error(f"An error occurred during initial lookup: {e}")
+        logger.error(f"Une erreur s'est produite lors de la recherche initiale : {e}")
 
-    # --- FIX for TypeError ---
-    # The agent and the room context are now both passed to the start() method.
+    # --- CORRECTIF pour TypeError ---
+    # L'agent et le contexte de la salle sont maintenant tous deux passés à la méthode start().
     await session.start(artex_agent, room=ctx.room)
-    logger.info("Agent session started.")
+    logger.info("Session de l'agent démarrée.")
     
     await asyncio.sleep(0.5)
     await session.say(initial_message, allow_interruptions=True)
-    logger.info("Spoke initial message.")
+    logger.info("Message initial énoncé.")
 
 
-# --- Standard CLI Runner ---
+# --- Exécuteur CLI Standard ---
 if __name__ == "__main__":
     cli.run_app(WorkerOptions(entrypoint_fnc=entrypoint))

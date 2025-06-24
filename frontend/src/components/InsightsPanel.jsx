@@ -7,6 +7,7 @@ import './InsightsPanel.css';
  */
 const FormattedPrompt = ({ prompt }) => {
   if (!prompt) {
+    // Texte pour l'utilisateur, déjà en français.
     return <pre className="prompt-content">En attente de la prochaine action...</pre>;
   }
   return <pre className="prompt-content">{prompt}</pre>;
@@ -30,11 +31,13 @@ const InsightsPanel = ({ insights, duration }) => {
   return (
     <aside className="insights-panel">
       <div className="panel-header">
+        {/* Texte pour l'utilisateur, déjà en français */}
         <h2>Informations de l'Agent</h2>
       </div>
       <div className="panel-content">
         <div className="insight-card">
           <h3 className="card-title">
+            {/* Texte pour l'utilisateur, déjà en français */}
             Durée de l'Appel
           </h3>
           <p className="duration-text">{formatDuration(duration)}</p>
@@ -42,9 +45,11 @@ const InsightsPanel = ({ insights, duration }) => {
 
         <div className="insight-card">
           <h3 className="card-title">
+            {/* Texte pour l'utilisateur, déjà en français */}
             Indicateurs de Performance (KPIs)
           </h3>
           <p className="kpi-text">
+            {/* Texte pour l'utilisateur, déjà en français */}
             Appels Connectés: {kpis.call_started || 0}
           </p>
           {/* Vous pouvez ajouter d'autres KPIs ici au fur et à mesure que l'agent les envoie */}
@@ -52,13 +57,17 @@ const InsightsPanel = ({ insights, duration }) => {
 
         <div className="insight-card">
           <h3 className="card-title">
+            {/* Texte pour l'utilisateur, déjà en français */}
             Raisonnement de l'Agent
           </h3>
           <div className="reasoning-content">
+            {/* Texte pour l'utilisateur, déjà en français */}
             <p><strong>Dernière Action:</strong></p>
             <p className="search-results-text">
+              {/* Texte pour l'utilisateur, déjà en français */}
               {reasoning.search_results || "En attente d'une interaction..."}
             </p>
+            {/* Texte pour l'utilisateur, déjà en français */}
             <p><strong>Prompt envoyé au Modèle:</strong></p>
             <FormattedPrompt prompt={reasoning.prompt} />
           </div>
