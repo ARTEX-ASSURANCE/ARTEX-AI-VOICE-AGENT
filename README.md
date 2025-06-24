@@ -1,83 +1,83 @@
-# LiveKit AI Car Call Centre
+# Centre d'Appel IA LiveKit pour Voitures (Exemple)
 
-## Project Setup and Running Instructions
+## Instructions de Configuration et d'Exécution du Projet
 
-This project consists of a React frontend and a Python Flask backend.
+Ce projet se compose d'un frontend React et d'un backend Python Flask.
 
-### Prerequisites
+### Prérequis
 
-*   Node.js and npm (or yarn) for the frontend.
-*   Python 3.x and pip for the backend.
-*   A LiveKit account and credentials (API Key, API Secret, Server URL).
+*   Node.js et npm (ou yarn) pour le frontend.
+*   Python 3.x et pip pour le backend.
+*   Un compte LiveKit et des identifiants (Clé API, Secret API, URL du Serveur).
 
-### 1. Backend Setup
+### 1. Configuration du Backend
 
-1.  **Navigate to the backend directory:**
+1.  **Naviguez vers le répertoire backend :**
     ```bash
     cd backend
     ```
 
-2.  **Create a Python virtual environment (recommended):**
+2.  **Créez un environnement virtuel Python (recommandé) :**
     ```bash
     python -m venv venv
-    source venv/bin/activate  # On Windows use `venv\Scripts\activate`
+    source venv/bin/activate  # Sous Windows, utilisez `venv\Scripts\activate`
     ```
 
-3.  **Install dependencies:**
+3.  **Installez les dépendances :**
     ```bash
     pip install -r requirements.txt
     ```
 
-4.  **Configure environment variables:**
-    *   Create a file named `.env` in the `backend` directory.
-    *   Add your LiveKit credentials to this file:
+4.  **Configurez les variables d'environnement :**
+    *   Créez un fichier nommé `.env` dans le répertoire `backend`.
+    *   Ajoutez vos identifiants LiveKit à ce fichier :
         ```
-        LIVEKIT_API_KEY=your_api_key_here
-        LIVEKIT_API_SECRET=your_api_secret_here
-        LIVEKIT_URL=your_livekit_url_here
+        LIVEKIT_API_KEY=votre_clé_api_ici
+        LIVEKIT_API_SECRET=votre_secret_api_ici
+        LIVEKIT_URL=votre_url_livekit_ici
         ```
-        Replace placeholders with your actual LiveKit API key, secret, and server URL (e.g., `https://your-project-abcdef.livekit.cloud`).
+        Remplacez les espaces réservés par votre clé API LiveKit, votre secret et l'URL de votre serveur (par exemple, `https://votre-projet-abcdef.livekit.cloud`).
 
-5.  **Run the backend server:**
+5.  **Lancez le serveur backend :**
     ```bash
     python server.py
     ```
-    The backend should now be running on `http://localhost:5001`.
+    Le backend devrait maintenant être en cours d'exécution sur `http://localhost:5001`.
 
-### 2. Frontend Setup
+### 2. Configuration du Frontend
 
-1.  **Navigate to the frontend directory (from the project root):**
+1.  **Naviguez vers le répertoire frontend (depuis la racine du projet) :**
     ```bash
     cd frontend
     ```
 
-2.  **Install dependencies:**
+2.  **Installez les dépendances :**
     ```bash
     npm install
-    # or
+    # ou
     # yarn install
     ```
 
-3.  **Configure environment variables:**
-    *   Create a file named `.env` in the `frontend` directory.
-    *   Add your LiveKit server URL and the backend URL to this file:
+3.  **Configurez les variables d'environnement :**
+    *   Créez un fichier nommé `.env` dans le répertoire `frontend`.
+    *   Ajoutez l'URL de votre serveur LiveKit et l'URL du backend à ce fichier :
         ```
-        VITE_LIVEKIT_URL=wss://your-livekit-domain.com
+        VITE_LIVEKIT_URL=wss://votre-domaine-livekit.com
         VITE_BACKEND_URL=http://localhost:5001
         ```
-        Replace `wss://your-livekit-domain.com` with your actual LiveKit WebSocket URL (this is often the same as your `LIVEKIT_URL` but prefixed with `wss://` and without the `/` at the end if `LIVEKIT_URL` has it, or it might be a specific WebSocket endpoint like `wss://your-project-abcdef.livekit.cloud`).
-        `VITE_BACKEND_URL` should point to your running backend server.
+        Remplacez `wss://votre-domaine-livekit.com` par votre URL WebSocket LiveKit réelle (c'est souvent la même que votre `LIVEKIT_URL` mais préfixée par `wss://` et sans le `/` à la fin si `LIVEKIT_URL` l'a, ou cela peut être un point de terminaison WebSocket spécifique comme `wss://votre-projet-abcdef.livekit.cloud`).
+        `VITE_BACKEND_URL` doit pointer vers votre serveur backend en cours d'exécution.
 
-4.  **Run the frontend development server:**
+4.  **Lancez le serveur de développement frontend :**
     ```bash
     npm run dev
-    # or
+    # ou
     # yarn dev
     ```
-    The frontend should now be accessible in your browser, typically at `http://localhost:5173` (Vite will show the exact URL).
+    Le frontend devrait maintenant être accessible dans votre navigateur, généralement à `http://localhost:5173` (Vite affichera l'URL exacte).
 
-### 3. Using the Application
+### 3. Utilisation de l'Application
 
-*   Ensure both the backend and frontend servers are running.
-*   Open the frontend URL in your browser.
-*   Click the "Démarrer l'appel" (Start Call) button to connect to the LiveKit room.
+*   Assurez-vous que les serveurs backend et frontend sont tous deux en cours d'exécution.
+*   Ouvrez l'URL du frontend dans votre navigateur.
+*   Cliquez sur le bouton "Démarrer l'appel" pour vous connecter à la salle LiveKit.
