@@ -4,11 +4,41 @@ from dotenv import load_dotenv
 from flask_cors import CORS
 from livekit.api import LiveKitAPI, AccessToken, VideoGrants, ListRoomsRequest # Importations mises à jour
 import uuid
+import os # Assurez-vous que os est importé pour getenv
+
+# Importer le logger d'erreurs et sa fonction de configuration
+from .error_logger import set_db_connection_params, log_system_error
 
 load_dotenv()
 
+# Configurer les paramètres de connexion pour le error_logger au démarrage
+# Ceci suppose que les mêmes variables d'environnement DB_* sont utilisées par db_driver et error_logger
+try:
+    db_params_for_error_logger = {
+        'host': os.getenv("DB_HOST"),
+        'user': os.getenv("DB_USER"),
+        'password': os.getenv("DB_PASSWORD"),
+        'database': os.getenv("DB_NAME"),
+        'port': os.getenv("DB_PORT", 3306) # Ajouter le port avec une valeur par défaut
+    }
+    if not all(db_params_for_error_logger[key] for key in ['host', 'user', 'password', 'database']):
+        raise ValueError("Variables d'environnement BD manquantes pour error_logger.")
+    set_db_connection_params(db_params_for_error_logger)
+except ValueError as ve:
+    # Utiliser le logger standard Python si la configuration de error_logger échoue.
+    import logging
+    logging.critical(f"Échec de la configuration des paramètres BD pour error_logger: {ve}. La journalisation des erreurs BD sera désactivée.")
+except Exception as e:
+    import logging
+    logging.critical(f"Erreur inattendue lors de la configuration de error_logger: {e}. La journalisation des erreurs BD sera désactivée.")
+
+
 app = Flask(__name__)
 CORS(app, resources={r"/*": {"origins": "*"}})
+
+# Enregistrer le blueprint du tableau de bord
+from .dashboard_api import dashboard_bp
+app.register_blueprint(dashboard_bp)
 
 async def generate_room_name():
     name = "room-" + str(uuid.uuid4())[:8]

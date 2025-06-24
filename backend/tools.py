@@ -51,22 +51,52 @@ async def confirm_identity(context: RunContext, date_of_birth: str, postal_code:
     Cet outil DOIT être appelé après qu'un outil de recherche a trouvé un adhérent potentiel.
     """
     unconfirmed: Optional[Adherent] = context.userdata.get("unconfirmed_adherent")
-    if not unconfirmed:
-        return "Veuillez d'abord rechercher un adhérent avant de confirmer une identité." # Déjà en français
-    
-    try:
-        dob = date.fromisoformat(date_of_birth)
-    except (ValueError, TypeError):
-        return "Format de date de naissance invalide. Veuillez utiliser le format AAAA-MM-JJ, par exemple 2001-05-28." # Déjà en français
+    db: ExtranetDatabaseDriver = context.userdata["db_driver"]
+    current_call_id: Optional[int] = context.userdata.get("current_call_journal_id")
+    tool_name = "confirm_identity"
+    params = {"date_of_birth": date_of_birth, "postal_code": postal_code}
+    result_str = ""
 
-    if unconfirmed.date_naissance == dob and unconfirmed.code_postal == postal_code:
-        context.userdata["adherent_context"] = unconfirmed
-        context.userdata["unconfirmed_adherent"] = None
-        logger.info(f"Identité confirmée pour : {unconfirmed.prenom} {unconfirmed.nom} (ID: {unconfirmed.id_adherent})")
-        return f"Merci ! Identité confirmée. Le dossier de {unconfirmed.prenom} {unconfirmed.nom} est maintenant ouvert. Comment puis-je vous aider ?" # Déjà en français
+    if current_call_id:
+        db.enregistrer_action_agent(
+            id_appel_fk=current_call_id,
+            type_action='TOOL_CALL',
+            nom_outil=tool_name,
+            parametres_outil=params
+        )
+    logger.info(f"Outil : {tool_name} appelé pour l'appel ID {current_call_id}")
+
+    if not unconfirmed:
+        result_str = "Veuillez d'abord rechercher un adhérent avant de confirmer une identité."
     else:
-        logger.warning(f"Échec de la confirmation d'identité pour l'ID adhérent : {unconfirmed.id_adherent}")
-        return "Les informations ne correspondent pas. Pour votre sécurité, je ne peux pas accéder à ce dossier." # Déjà en français
+        try:
+            dob = date.fromisoformat(date_of_birth)
+            if unconfirmed.date_naissance == dob and unconfirmed.code_postal == postal_code:
+                context.userdata["adherent_context"] = unconfirmed
+                context.userdata["unconfirmed_adherent"] = None # Effacer l'adhérent non confirmé
+
+                # Enregistrer le contexte adhérent dans journal_appels
+                if current_call_id:
+                    db.enregistrer_contexte_adherent_appel(current_call_id, unconfirmed.id_adherent)
+                    logger.info(f"Contexte adhérent {unconfirmed.id_adherent} enregistré pour l'appel ID {current_call_id}.")
+
+                logger.info(f"Identité confirmée pour : {unconfirmed.prenom} {unconfirmed.nom} (ID: {unconfirmed.id_adherent}) pour l'appel ID {current_call_id}")
+                result_str = f"Merci ! Identité confirmée. Le dossier de {unconfirmed.prenom} {unconfirmed.nom} est maintenant ouvert. Comment puis-je vous aider ?"
+            else:
+                logger.warning(f"Échec de la confirmation d'identité pour l'ID adhérent : {unconfirmed.id_adherent} pour l'appel ID {current_call_id}")
+                result_str = "Les informations ne correspondent pas. Pour votre sécurité, je ne peux pas accéder à ce dossier."
+        except (ValueError, TypeError):
+            logger.warning(f"Format de date de naissance invalide fourni: {date_of_birth} pour l'appel ID {current_call_id}")
+            result_str = "Format de date de naissance invalide. Veuillez utiliser le format AAAA-MM-JJ, par exemple 2001-05-28."
+
+    if current_call_id:
+        db.enregistrer_action_agent(
+            id_appel_fk=current_call_id,
+            type_action='TOOL_RESULT',
+            nom_outil=tool_name,
+            resultat_outil=result_str
+        )
+    return result_str
 
 @function_tool
 async def clear_context(context: RunContext) -> str:
@@ -80,13 +110,47 @@ async def clear_context(context: RunContext) -> str:
 
 # --- Outils de Recherche et de Gestion des Adhérents ---
 
+import json # Assurez-vous que json est importé
+from .error_logger import log_system_error # Ajout de l'importation
+
 @function_tool
 async def lookup_adherent_by_email(context: RunContext, email: str) -> str:
     """Recherche un adhérent en utilisant son adresse e-mail pour commencer le processus d'identification."""
     db: ExtranetDatabaseDriver = context.userdata["db_driver"]
-    logger.info(f"Outil : Recherche d'adhérent par e-mail : {email}")
+    current_call_id: Optional[int] = context.userdata.get("current_call_journal_id")
+    tool_name = "lookup_adherent_by_email"
+    params = {"email": email}
+
+    if current_call_id:
+        db.enregistrer_action_agent(
+            id_appel_fk=current_call_id,
+            type_action='TOOL_CALL',
+            nom_outil=tool_name,
+            parametres_outil=params
+        )
+
+    logger.info(f"Outil : {tool_name} appelé avec email : {email} pour l'appel ID {current_call_id}")
+
+    # Logique actuelle de l'outil
+    # La ligne suivante était un placeholder incorrect et a été supprimée:
+    # adherent_obj = db.get_adherent_by_id(1)
+
+    # L'appel à db.get_adherent_by_email doit se faire sans passer call_id directement ici,
+    # car la journalisation de l'interaction DB spécifique se fait DANS la méthode db_driver elle-même.
+    # Si db_driver.py est modifié pour accepter call_id, alors on pourrait le passer.
+    # Pour l'instant, on suppose que db_driver.get_adherent_by_email NE PREND PAS call_id.
     adherent = db.get_adherent_by_email(email.strip())
-    return _handle_lookup_result(context, adherent, "email")
+
+    result_str = _handle_lookup_result(context, adherent, "email")
+
+    if current_call_id:
+        db.enregistrer_action_agent( # On pourrait aussi mettre à jour l'enregistrement précédent si on stockait son ID
+            id_appel_fk=current_call_id,
+            type_action='TOOL_RESULT', # Ou mettre à jour l'action 'TOOL_CALL' existante
+            nom_outil=tool_name,
+            resultat_outil=result_str
+        )
+    return result_str
 
 @function_tool
 async def lookup_adherent_by_telephone(context: RunContext, telephone: str) -> str:
@@ -284,14 +348,39 @@ async def create_claim(context: RunContext, contract_id: int, claim_type: str, d
             date_survenance=parsed_date
         )
         if new_claim:
-            return f"Sinistre créé avec succès! Numéro de sinistre: {new_claim.id_sinistre_artex}." # Déjà en français
+            result_str = f"Sinistre créé avec succès! Numéro de sinistre: {new_claim.id_sinistre_artex}."
         else:
-            return "Erreur lors de la création du sinistre. Vérifiez que le contrat vous appartient." # Déjà en français
-    except ValueError:
-        return "Erreur: La date d'incident doit être au format AAAA-MM-JJ (exemple: 2024-06-23)." # Déjà en français
+            # This case (contract not belonging to user) is handled by db_driver.create_sinistre returning None
+            # and db_driver already logs an INSERT_FAIL. The tool just returns the message.
+            result_str = "Erreur lors de la création du sinistre. Vérifiez que le contrat vous appartient."
+    except ValueError as ve:
+        result_str = "Erreur: La date d'incident doit être au format AAAA-MM-JJ (exemple: 2024-06-23)."
+        log_system_error(
+            source_erreur=f"tools.{tool_name}",
+            message_erreur=result_str,
+            exception_obj=ve,
+            id_appel_fk=current_call_id,
+            contexte_supplementaire=params
+        )
     except Exception as e:
-        logger.error(f"Erreur inattendue lors de la création du sinistre : {e}")
-        return "Une erreur inattendue s'est produite." # Déjà en français
+        result_str = "Une erreur inattendue s'est produite lors de la création du sinistre."
+        logger.error(f"Erreur inattendue dans {tool_name} pour appel ID {current_call_id}: {e}", exc_info=True)
+        log_system_error(
+            source_erreur=f"tools.{tool_name}",
+            message_erreur=f"Erreur inattendue: {e}",
+            exception_obj=e,
+            id_appel_fk=current_call_id,
+            contexte_supplementaire=params
+        )
+
+    if current_call_id:
+        db.enregistrer_action_agent(
+            id_appel_fk=current_call_id,
+            type_action='TOOL_RESULT',
+            nom_outil=tool_name,
+            resultat_outil=result_str
+        )
+    return result_str
 
 @function_tool
 async def get_claim_status(context: RunContext, claim_id: int) -> str:
