@@ -31,6 +31,7 @@ const SimpleVoiceAssistant = ({ token, onDataReceived }) => {
   const serverUrl = import.meta.env.VITE_LIVEKIT_URL;
 
   // Affiche un message d'erreur clair si l'URL n'est pas configurée
+  // Ceci est un message pour les développeurs, le français est acceptable ici car le reste du code l'est.
   if (!serverUrl) {
     return (
       <div className="error-container">
@@ -60,7 +61,7 @@ const SimpleVoiceAssistant = ({ token, onDataReceived }) => {
         <DataReceiver onDataReceived={onDataReceived} />
         {/* La barre de contrôle permet à l'utilisateur de se mettre en sourdine et de quitter */}
         <ControlBar controls={{ microphone: true, screenShare: false, camera: false, chat: false, leave: true }} />
-      </LiveKitRoom>
+      </LiveKitRoom
     </main>
   );
 };

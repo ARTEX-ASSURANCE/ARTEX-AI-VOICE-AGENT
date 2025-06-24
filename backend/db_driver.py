@@ -10,13 +10,13 @@ from datetime import date
 from decimal import Decimal
 import logging
 
-# Configure logging
+# Configurer le logging
 logger = logging.getLogger(__name__)
 
-# Load environment variables from .env file
+# Charger les variables d'environnement depuis le fichier .env
 load_dotenv()
 
-# --- Dataclasses matching your DB Schema ---
+# --- Dataclasses correspondant à votre schéma de base de données ---
 
 @dataclass
 class Adherent:
@@ -48,7 +48,7 @@ class Contrat:
     id_formule: int
     date_fin_contrat: Optional[date] = None
     type_contrat: Optional[str] = None
-    statut_contrat: str = 'Actif'
+    statut_contrat: str = 'Actif' # Par défaut à 'Actif'
 
 @dataclass
 class Garantie:
@@ -62,7 +62,7 @@ class FormuleGarantie:
     id_garantie: int
     plafond_remboursement: Optional[Decimal] = None
     taux_remboursement_pourcentage: Optional[Decimal] = None
-    franchise: Optional[Decimal] = Decimal('0.00')
+    franchise: Optional[Decimal] = Decimal('0.00') # Par défaut à 0.00
     conditions_specifiques: Optional[str] = None
 
 @dataclass
@@ -77,16 +77,16 @@ class SinistreArtex:
     date_survenance: Optional[date] = None
 
 
-# --- Database Driver for all 'extranet' tables ---
+# --- Pilote de base de données pour toutes les tables 'extranet' ---
 
 class ExtranetDatabaseDriver:
     """
-    Handles all database connections and operations for the extranet system.
-    This class acts as a centralized data access layer, encapsulating all SQL queries.
+    Gère toutes les connexions et opérations de base de données pour le système extranet.
+    Cette classe agit comme une couche d'accès aux données centralisée, encapsulant toutes les requêtes SQL.
     """
     def __init__(self):
         """
-        Initializes the driver by loading credentials from environment variables.
+        Initialise le pilote en chargeant les identifiants depuis les variables d'environnement.
         """
         db_host = os.getenv("DB_HOST")
         db_user = os.getenv("DB_USER")
@@ -94,7 +94,7 @@ class ExtranetDatabaseDriver:
         db_name = os.getenv("DB_NAME")
 
         if not all([db_host, db_user, db_password, db_name]):
-            raise ValueError("One or more database environment variables are not set.")
+            raise ValueError("Une ou plusieurs variables d'environnement de base de données ne sont pas définies.")
 
         self.connection_params = {
             'host': db_host,
@@ -102,68 +102,68 @@ class ExtranetDatabaseDriver:
             'password': db_password,
             'database': db_name
         }
-        logger.info("Database driver initialized with connection parameters.")
+        logger.info("Pilote de base de données initialisé avec les paramètres de connexion.")
 
     @contextmanager
     def _get_connection(self):
-        """Provides a managed connection to the MySQL database."""
+        """Fournit une connexion gérée à la base de données MySQL."""
         conn = None
         try:
             conn = mysql.connector.connect(**self.connection_params)
             yield conn
         except mysql.connector.Error as err:
-            logger.error(f"Database connection error: {err}")
-            raise # Re-raise the exception after logging
+            logger.error(f"Erreur de connexion à la base de données : {err}")
+            raise # Relancer l'exception après l'avoir journalisée
         finally:
             if conn and conn.is_connected():
                 conn.close()
 
     def _map_row(self, row: tuple, cursor, dataclass_type):
-        """Helper to map a single database row to a dataclass instance."""
+        """Utilitaire pour mapper une seule ligne de base de données à une instance de dataclass."""
         if not row:
             return None
         
         column_names = [desc[0] for desc in cursor.description]
         row_dict = dict(zip(column_names, row))
         
-        # Filter the dictionary to only include keys that are fields in the dataclass
+        # Filtrer le dictionnaire pour n'inclure que les clés qui sont des champs dans la dataclass
         dataclass_fields = {f.name for f in fields(dataclass_type)}
         filtered_dict = {k: v for k, v in row_dict.items() if k in dataclass_fields}
         
         return dataclass_type(**filtered_dict)
 
     def _map_rows(self, rows: List[tuple], cursor, dataclass_type):
-        """Helper to map multiple database rows to a list of dataclass instances."""
+        """Utilitaire pour mapper plusieurs lignes de base de données à une liste d'instances de dataclass."""
         if not rows:
             return []
         return [self._map_row(row, cursor, dataclass_type) for row in rows]
 
-    # --- Adherent Methods ---
+    # --- Méthodes Adherent ---
 
     def get_adherent_by_id(self, adherent_id: int) -> Optional[Adherent]:
-        """Retrieves a single adherent by their unique ID."""
+        """Récupère un seul adhérent par son ID unique."""
         with self._get_connection() as conn:
             cursor = conn.cursor()
             cursor.execute("SELECT * FROM adherents WHERE id_adherent = %s", (adherent_id,))
             return self._map_row(cursor.fetchone(), cursor, Adherent)
 
     def get_adherent_by_email(self, email: str) -> Optional[Adherent]:
-        """Retrieves a single adherent by their email address."""
+        """Récupère un seul adhérent par son adresse e-mail."""
         with self._get_connection() as conn:
             cursor = conn.cursor()
             cursor.execute("SELECT * FROM adherents WHERE email = %s", (email,))
             return self._map_row(cursor.fetchone(), cursor, Adherent)
 
     def get_adherents_by_telephone(self, telephone: str) -> List[Adherent]:
-        """Retrieves a list of adherents by their telephone number."""
+        """Récupère une liste d'adhérents par leur numéro de téléphone."""
         with self._get_connection() as conn:
             cursor = conn.cursor()
-            # Search for numbers that end with the provided telephone string to handle international formats
+            # Recherche les numéros qui se terminent par la chaîne de téléphone fournie pour gérer les formats internationaux
             cursor.execute("SELECT * FROM adherents WHERE telephone LIKE %s", (f"%{telephone}",))
             return self._map_rows(cursor.fetchall(), cursor, Adherent)
 
     def get_adherents_by_fullname(self, nom: str, prenom: str) -> List[Adherent]:
-        """Retrieves a list of adherents by their full name."""
+        """Récupère une liste d'adhérents par leur nom complet."""
         with self._get_connection() as conn:
             cursor = conn.cursor()
             cursor.execute("SELECT * FROM adherents WHERE nom = %s AND prenom = %s", (nom, prenom))
@@ -172,7 +172,7 @@ class ExtranetDatabaseDriver:
     def update_adherent_contact_info(self, adherent_id: int, address: Optional[str] = None, 
                                      code_postal: Optional[str] = None, ville: Optional[str] = None, 
                                      telephone: Optional[str] = None, email: Optional[str] = None) -> bool:
-        """Updates contact information for a given adherent."""
+        """Met à jour les informations de contact pour un adhérent donné."""
         fields_to_update = {
             "adresse": address, "code_postal": code_postal, "ville": ville,
             "telephone": telephone, "email": email
@@ -192,28 +192,28 @@ class ExtranetDatabaseDriver:
                 conn.commit()
                 return cursor.rowcount > 0
             except mysql.connector.Error as err:
-                logger.error(f"Failed to update contact info for adherent {adherent_id}: {err}")
+                logger.error(f"Échec de la mise à jour des informations de contact pour l'adhérent {adherent_id} : {err}")
                 conn.rollback()
                 return False
 
-    # --- Contrat & Formule Methods ---
+    # --- Méthodes Contrat & Formule ---
 
     def get_contrats_by_adherent_id(self, adherent_id: int) -> List[Contrat]:
-        """Retrieves all contracts for a given adherent ID."""
+        """Récupère tous les contrats pour un ID d'adhérent donné."""
         with self._get_connection() as conn:
             cursor = conn.cursor()
             cursor.execute("SELECT * FROM contrats WHERE id_adherent_principal = %s", (adherent_id,))
             return self._map_rows(cursor.fetchall(), cursor, Contrat)
 
     def get_contract_by_id(self, contract_id: int) -> Optional[Contrat]:
-        """Retrieves a single contract by its unique ID."""
+        """Récupère un seul contrat par son ID unique."""
         with self._get_connection() as conn:
             cursor = conn.cursor()
             cursor.execute("SELECT * FROM contrats WHERE id_contrat = %s", (contract_id,))
             return self._map_row(cursor.fetchone(), cursor, Contrat)
 
     def get_full_contract_details(self, contract_id: int) -> Optional[Dict[str, Any]]:
-        """Retrieves combined contract and formula details for a given contract ID."""
+        """Récupère les détails combinés du contrat et de la formule pour un ID de contrat donné."""
         query = """
             SELECT c.*, f.nom_formule, f.tarif_base_mensuel, f.description_formule
             FROM contrats c JOIN formules f ON c.id_formule = f.id_formule
@@ -224,10 +224,10 @@ class ExtranetDatabaseDriver:
             cursor.execute(query, (contract_id,))
             return cursor.fetchone()
 
-    # --- Garantie (Coverage) Methods ---
+    # --- Méthodes Garantie (Couverture) ---
 
     def get_guarantees_for_formula(self, formula_id: int) -> List[Dict[str, Any]]:
-        """Retrieves all guarantees with their terms for a specific formula."""
+        """Récupère toutes les garanties avec leurs termes pour une formule spécifique."""
         query = """
             SELECT g.libelle, g.description, fg.*
             FROM formules_garanties fg JOIN garanties g ON fg.id_garantie = g.id_garantie
@@ -239,7 +239,7 @@ class ExtranetDatabaseDriver:
             return cursor.fetchall()
 
     def get_specific_guarantee_detail(self, formula_id: int, guarantee_name: str) -> Optional[Dict[str, Any]]:
-        """Retrieves the details for a single, specific guarantee within a formula."""
+        """Récupère les détails d'une garantie spécifique unique au sein d'une formule."""
         query = """
             SELECT g.libelle, g.description, fg.*
             FROM formules_garanties fg JOIN garanties g ON fg.id_garantie = g.id_garantie
@@ -250,17 +250,17 @@ class ExtranetDatabaseDriver:
             cursor.execute(query, (formula_id, f"%{guarantee_name}%"))
             return cursor.fetchone()
 
-    # --- Sinistre (Claim) Methods ---
+    # --- Méthodes Sinistre ---
 
     def get_sinistres_by_adherent_id(self, adherent_id: int) -> List[SinistreArtex]:
-        """Retrieves all claims filed by a specific adherent."""
+        """Récupère tous les sinistres déclarés par un adhérent spécifique."""
         with self._get_connection() as conn:
             cursor = conn.cursor()
             cursor.execute("SELECT * FROM sinistres_artex WHERE id_adherent = %s", (adherent_id,))
             return self._map_rows(cursor.fetchall(), cursor, SinistreArtex)
 
     def get_sinistre_by_id(self, sinistre_id: int) -> Optional[SinistreArtex]:
-        """Retrieves a single claim by its unique ID."""
+        """Récupère un seul sinistre par son ID unique."""
         with self._get_connection() as conn:
             cursor = conn.cursor()
             cursor.execute("SELECT * FROM sinistres_artex WHERE id_sinistre_artex = %s", (sinistre_id,))
@@ -268,14 +268,14 @@ class ExtranetDatabaseDriver:
 
     def create_sinistre(self, id_contrat: int, id_adherent: int, type_sinistre: str,
                         description_sinistre: str, date_survenance: date) -> Optional[SinistreArtex]:
-        """Creates a new claim in the database after validating ownership."""
+        """Crée un nouveau sinistre dans la base de données après validation de la propriété."""
         with self._get_connection() as conn:
             cursor = conn.cursor()
             try:
                 cursor.execute("SELECT id_adherent_principal FROM contrats WHERE id_contrat = %s", (id_contrat,))
                 result = cursor.fetchone()
                 if not result or result[0] != id_adherent:
-                    logger.warning(f"Attempt to create claim for contract {id_contrat} by non-principal adherent {id_adherent}.")
+                    logger.warning(f"Tentative de création de sinistre pour le contrat {id_contrat} par l'adhérent non principal {id_adherent}.")
                     return None
 
                 query = """
@@ -283,23 +283,23 @@ class ExtranetDatabaseDriver:
                                                  statut_sinistre_artex, description_sinistre, date_survenance)
                     VALUES (%s, %s, %s, CURDATE(), %s, %s, %s)
                 """
-                initial_status = "Soumis"
+                initial_status = "Soumis" # Statut initial
                 values = (id_contrat, id_adherent, type_sinistre,
                           initial_status, description_sinistre, date_survenance)
                 
                 cursor.execute(query, values)
                 new_id = cursor.lastrowid
                 conn.commit()
-                logger.info(f"Successfully created claim with ID: {new_id}")
+                logger.info(f"Sinistre créé avec succès avec l'ID : {new_id}")
                 return self.get_sinistre_by_id(new_id)
 
             except mysql.connector.Error as err:
-                logger.error(f"Database error during claim creation: {err}")
+                logger.error(f"Erreur de base de données lors de la création du sinistre : {err}")
                 conn.rollback()
                 return None
 
     def update_sinistre_status(self, sinistre_id: int, new_status: str, notes: Optional[str] = None) -> bool:
-        """Updates the status of a claim and optionally appends notes."""
+        """Met à jour le statut d'un sinistre et ajoute éventuellement des notes."""
         with self._get_connection() as conn:
             cursor = conn.cursor()
             try:
@@ -318,6 +318,6 @@ class ExtranetDatabaseDriver:
                 conn.commit()
                 return cursor.rowcount > 0
             except mysql.connector.Error as err:
-                logger.error(f"Failed to update status for claim {sinistre_id}: {err}")
+                logger.error(f"Échec de la mise à jour du statut pour le sinistre {sinistre_id} : {err}")
                 conn.rollback()
                 return False

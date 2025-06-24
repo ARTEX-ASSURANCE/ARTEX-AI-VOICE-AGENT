@@ -24,12 +24,12 @@ from tools import (
 )
 
 class ArtexAgent(Agent):
-    # --- LATENCY REDUCTION CHANGE ---
-    # The __init__ method is modified to accept a pre-initialized db_driver.
-    # This prevents the agent from creating a new database driver for every single job.
+    # --- CHANGEMENT POUR RÉDUCTION DE LATENCE ---
+    # La méthode __init__ est modifiée pour accepter un db_driver pré-initialisé.
+    # Cela empêche l'agent de créer un nouveau pilote de base de données pour chaque tâche.
     def __init__(self, db_driver: ExtranetDatabaseDriver):
         """
-        Initializes the ArtexAgent with all its components and a shared database driver.
+        Initialise l'ArtexAgent avec tous ses composants et un pilote de base de données partagé.
         """
         super().__init__(
             instructions=INSTRUCTIONS,
@@ -38,7 +38,7 @@ class ArtexAgent(Agent):
             
             tts=google.TTS(
                 language="fr-FR",
-                voice_name="fr-FR-Chirp3-HD-Charon" # Changed for a potentially lower latency voice
+                voice_name="fr-FR-Chirp3-HD-Charon" # Voix changée pour une latence potentiellement plus faible
             ),
 
             stt=google.STT(
@@ -48,41 +48,41 @@ class ArtexAgent(Agent):
             
             vad=silero.VAD.load(),
 
-            # The complete list of available tools for the agent.
+            # La liste complète des outils disponibles pour l'agent.
             tools=[
-                # Identity & Context
+                # Identité & Contexte
                 lookup_adherent_by_email,
                 lookup_adherent_by_telephone,
                 lookup_adherent_by_fullname,
                 confirm_identity,
                 get_adherent_details,
                 clear_context,
-                # Self-Service
+                # Libre-Service
                 update_contact_information,
-                # Contract & Coverage
+                # Contrat & Couverture
                 list_adherent_contracts,
                 get_contract_details,
                 list_plan_guarantees,
                 get_specific_coverage_details,
                 simulate_reimbursement,
-                # Claims
+                # Sinistres
                 list_adherent_claims,
                 create_claim,
                 get_claim_status,
             ],
         )
-        # Store the pre-initialized driver that was passed in.
+        # Stocker le pilote pré-initialisé qui a été passé.
         self.db_driver = db_driver
-        logging.info("ArtexAgent blueprint configured with a shared DB driver to reduce latency.")
+        logging.info("Schéma ArtexAgent configuré avec un pilote de BD partagé pour réduire la latence.")
 
     def get_initial_userdata(self) -> dict:
         """
-        Creates a fresh user data dictionary for each new session,
-        providing the tools with access to the shared database driver
-        and initializing session-specific context variables.
+        Crée un nouveau dictionnaire de données utilisateur pour chaque nouvelle session,
+        fournissant aux outils un accès au pilote de base de données partagé
+        et initialisant les variables de contexte spécifiques à la session.
         """
         return {
             "db_driver": self.db_driver,
-            "adherent_context": None,      # For the fully confirmed member
-            "unconfirmed_adherent": None,  # For temporary lookups pending confirmation
+            "adherent_context": None,      # Pour l'adhérent entièrement confirmé
+            "unconfirmed_adherent": None,  # Pour les recherches temporaires en attente de confirmation
         }
