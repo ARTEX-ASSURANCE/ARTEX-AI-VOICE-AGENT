@@ -1,8 +1,8 @@
 import React, { useState } from 'react';
 import KPIsApercu from '../components/dashboard/KPIsApercu';
 import HistoriqueAppelsTable from '../components/dashboard/HistoriqueAppelsTable';
-import JournalErreursTable from '../components/dashboard/JournalErreursTable'; // Importer le nouveau composant
-// import JournalDBTable from '../components/dashboard/JournalDBTable';
+import JournalErreursTable from '../components/dashboard/JournalErreursTable';
+import JournalDBTable from '../components/dashboard/JournalDBTable'; // Importer le nouveau composant
 
 // Définir les types de vues possibles pour une meilleure gestion
 const VIEW_TYPES = {
@@ -24,8 +24,7 @@ const DashboardPage = () => {
       case VIEW_TYPES.ERREURS:
         return <JournalErreursTable />; // Afficher le composant
       case VIEW_TYPES.DB_LOG:
-        // return <JournalDBTable />;
-        return <p>Section Journal Base de Données à implémenter.</p>;
+        return <JournalDBTable />; // Afficher le composant
       default:
         return <p>Veuillez sélectionner une vue.</p>;
     }
