@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useCallback } from 'react';
+import DetailAppelModal from './DetailAppelModal'; // Importer le composant modal
 
 const HistoriqueAppelsTable = () => {
   const [calls, setCalls] = useState([]);
@@ -17,6 +18,19 @@ const HistoriqueAppelsTable = () => {
     numeroAppelant: ''
   });
   const [activeFilters, setActiveFilters] = useState({});
+
+  const [selectedCallIdForDetail, setSelectedCallIdForDetail] = useState(null);
+  const [isDetailModalOpen, setIsDetailModalOpen] = useState(false);
+
+  const handleOpenDetailModal = (callId) => {
+    setSelectedCallIdForDetail(callId);
+    setIsDetailModalOpen(true);
+  };
+
+  const handleCloseDetailModal = () => {
+    setIsDetailModalOpen(false);
+    setSelectedCallIdForDetail(null); // Optionnel: réinitialiser l'ID pour éviter de recharger les mêmes données si la modale est rouverte rapidement
+  };
 
   const fetchCalls = useCallback(async (page, currentFilters) => {
     setIsLoading(true);
@@ -157,7 +171,7 @@ const HistoriqueAppelsTable = () => {
               <td style={thTdStyle}>{call.id_adherent_contexte ? `${call.prenom || ''} ${call.nom || ''} (ID: ${call.id_adherent_contexte})` : 'Non identifié'}</td>
               <td style={thTdStyle} title={call.evaluation_resolution_appel}>{call.evaluation_resolution_appel ? call.evaluation_resolution_appel.substring(0, 50) + (call.evaluation_resolution_appel.length > 50 ? '...' : '') : 'N/A'}</td>
               <td style={thTdStyle}>
-                <button onClick={() => alert(`Afficher détails pour appel ID: ${call.id_appel}`)} style={{...buttonStyle, fontSize:'0.9em', padding:'5px 10px'}}>Détails</button>
+                <button onClick={() => handleOpenDetailModal(call.id_appel)} style={{...buttonStyle, fontSize:'0.9em', padding:'5px 10px'}}>Détails</button>
               </td>
             </tr>
           )) : (
@@ -179,6 +193,13 @@ const HistoriqueAppelsTable = () => {
           Suivant
         </button>
       </div>
+
+      {isDetailModalOpen && selectedCallIdForDetail && (
+        <DetailAppelModal
+          id_appel={selectedCallIdForDetail}
+          onClose={handleCloseDetailModal}
+        />
+      )}
     </div>
   );
 };
