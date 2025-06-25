@@ -111,12 +111,49 @@ const DetailAppelModal = ({ id_appel, onClose }) => {
                   : 'Non identifié'}
               </p>
               <p style={detailItemStyle}><span style={labelStyle}>Résumé de l'appel:</span></p>
-              <p style={{marginLeft:'10px', fontStyle:'italic', background:'#f9f9f9', padding:'10px', borderRadius:'3px'}}>{callDetails.informations_appel?.resume_appel || 'Non disponible'}</p>
+              <div style={{marginLeft:'10px', fontStyle:'italic', background:'#f9f9f9', padding:'10px', borderRadius:'3px', border: '1px solid #eee'}}>
+                {callDetails.informations_appel?.resume_appel || 'Non disponible'}
+              </div>
 
-              <h4 style={{...labelStyle, marginTop:'15px'}}>Évaluation de Performance:</h4>
-              <p style={detailItemStyle}><span style={labelStyle}>Adhérence aux Instructions:</span> {callDetails.informations_appel?.evaluation_performance_prompt || 'Non évalué'}</p>
-              <p style={detailItemStyle}><span style={labelStyle}>Résolution de l'Appel:</span> {callDetails.informations_appel?.evaluation_resolution_appel || 'Non évalué'}</p>
+              <h4 style={{...labelStyle, color: '#007bff', marginTop:'15px', marginBottom:'5px'}}>Évaluation de Performance:</h4>
+              <div style={{marginLeft:'10px', background:'#f9f9f9', padding:'10px', borderRadius:'3px', border: '1px solid #eee'}}>
+                <p style={detailItemStyle}><span style={labelStyle}>Adhérence aux Instructions:</span> {callDetails.informations_appel?.evaluation_performance_prompt || 'Non évalué'}</p>
+                <p style={{...detailItemStyle, marginBottom: 0}}><span style={labelStyle}>Résolution de l'Appel:</span> {callDetails.informations_appel?.evaluation_resolution_appel || 'Non évalué'}</p>
+              </div>
             </section>
+
+            {callDetails.interactions_bd && callDetails.interactions_bd.length > 0 && (
+            <section>
+              <h3 style={sectionTitleStyle}>Résumé des Actions sur la Base de Données</h3>
+              <ul style={{ listStyleType: 'disc', paddingLeft: '20px', background: '#f9f9f9', padding:'10px', borderRadius:'3px', border: '1px solid #eee' }}>
+                {callDetails.interactions_bd.map(interaction => {
+                  let typeActionTraduit = interaction.type_requete;
+                  if (interaction.type_requete.includes('SELECT')) typeActionTraduit = 'Consultation';
+                  else if (interaction.type_requete.includes('INSERT_ATTEMPT')) typeActionTraduit = 'Tentative de création';
+                  else if (interaction.type_requete.includes('INSERT_SUCCESS')) typeActionTraduit = 'Création réussie';
+                  else if (interaction.type_requete.includes('INSERT_FAIL')) typeActionTraduit = 'Échec de création';
+                  else if (interaction.type_requete.includes('UPDATE_ATTEMPT')) typeActionTraduit = 'Tentative de mise à jour';
+                  else if (interaction.type_requete.includes('UPDATE_SUCCESS')) typeActionTraduit = 'Mise à jour réussie';
+                  else if (interaction.type_requete.includes('UPDATE_NOCHANGE')) typeActionTraduit = 'Mise à jour (aucune modification)';
+                  else if (interaction.type_requete.includes('UPDATE_FAIL')) typeActionTraduit = 'Échec de mise à jour';
+
+                  let message = `${typeActionTraduit} sur la table '${interaction.table_affectee}'.`;
+                  // Utiliser la description_action pour plus de détails si elle est informative
+                  if (interaction.description_action && interaction.description_action.toLowerCase() !== description_action.toLowerCase()) {
+                     // Eviter la redondance si description_action est juste une répétition
+                     if (!interaction.description_action.toLowerCase().includes(interaction.table_affectee.toLowerCase()) ||
+                         !interaction.description_action.toLowerCase().includes(typeActionTraduit.toLowerCase().split(' ')[0])) {
+                        message += ` Détail: ${interaction.description_action}`;
+                     }
+                  }
+                  if (interaction.id_adherent_concerne) {
+                    message += ` (Adhérent ID: ${interaction.id_adherent_concerne})`;
+                  }
+                  return <li key={`summary-${interaction.id_interaction_bd}`} style={{marginBottom:'5px'}}>{message}</li>;
+                })}
+              </ul>
+            </section>
+            )}
 
             {callDetails.actions_agent && callDetails.actions_agent.length > 0 && (
               <section>
