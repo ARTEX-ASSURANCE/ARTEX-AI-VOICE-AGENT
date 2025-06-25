@@ -1,7 +1,6 @@
 import React, { useState } from 'react';
 import KPIsApercu from '../components/dashboard/KPIsApercu';
-// Importer d'autres composants de section ici au fur et à mesure de leur création
-// import HistoriqueAppelsTable from '../components/dashboard/HistoriqueAppelsTable';
+import HistoriqueAppelsTable from '../components/dashboard/HistoriqueAppelsTable'; // Importer le nouveau composant
 // import JournalErreursTable from '../components/dashboard/JournalErreursTable';
 // import JournalDBTable from '../components/dashboard/JournalDBTable';
 
@@ -21,8 +20,7 @@ const DashboardPage = () => {
       case VIEW_TYPES.APERCU:
         return <KPIsApercu />;
       case VIEW_TYPES.APPELS:
-        // return <HistoriqueAppelsTable />;
-        return <p>Section Historique des Appels à implémenter.</p>;
+        return <HistoriqueAppelsTable />; // Afficher le composant
       case VIEW_TYPES.ERREURS:
         // return <JournalErreursTable />;
         return <p>Section Journal des Erreurs à implémenter.</p>;
