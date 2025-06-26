@@ -174,10 +174,20 @@ class ExtranetDatabaseDriver:
 
     def get_adherents_by_telephone(self, telephone: str, id_appel_fk_param: Optional[int] = None) -> List[Adherent]:
         """Récupère une liste d'adhérents par leur numéro de téléphone."""
+        description = f"Consultation adhérents par téléphone: {telephone}"
+        # id_adherent_concerne n'est pas applicable directement pour une recherche qui peut retourner plusieurs résultats.
+        self._log_db_interaction(
+            type_requete="SELECT",
+            table_affectee="adherents",
+            description_action=description,
+            id_appel_fk=id_appel_fk_param
+        )
         with self._get_connection() as conn:
             cursor = conn.cursor()
             # Recherche les numéros qui se terminent par la chaîne de téléphone fournie pour gérer les formats internationaux
             cursor.execute("SELECT * FROM adherents WHERE telephone LIKE %s", (f"%{telephone}",))
+            # TODO: Si des adhérents sont trouvés, on pourrait logger une interaction pour chaque ID trouvé,
+            # ou un résumé (ex: "X adhérents trouvés"). Pour l'instant, on logge juste la requête.
             return self._map_rows(cursor.fetchall(), cursor, Adherent)
 
     def get_adherents_by_fullname(self, nom: str, prenom: str, id_appel_fk_param: Optional[int] = None) -> List[Adherent]:
